@@ -20,7 +20,7 @@ func main() {
 	cfg := config.MustLoad()
 
 	log := setupLogger(cfg.Env)
-	log.Info("Starting URL Shortener", slog.String("env", cfg.Env))
+	log.Info("Starting URL Shortener", slog.String("env", cfg.Env), slog.String("addr", cfg.Addr))
 	log.Debug("debug messages are enabled")
 
 	storage, err := sqlite.New(cfg.StoragePath)

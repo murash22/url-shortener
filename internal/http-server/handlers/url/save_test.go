@@ -2,7 +2,6 @@ package url_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +13,7 @@ import (
 	"testing"
 	"url-shortener/internal/http-server/handlers/url"
 	"url-shortener/internal/http-server/handlers/url/mocks"
+	custommocks "url-shortener/internal/lib/custom-mocks"
 )
 
 func TestSaveHandler(t *testing.T) {
@@ -68,7 +68,7 @@ func TestSaveHandler(t *testing.T) {
 					Return(int64(1), tc.mockError).
 					Once()
 			}
-			logger := slog.New(mockLogger{})
+			logger := slog.New(custommocks.NewMockLogger())
 			handler := url.New(logger, urlSaverMock)
 
 			input := fmt.Sprintf(`{"url": "%s", "alias": "%s"}`, tc.url, tc.alias)
@@ -90,22 +90,4 @@ func TestSaveHandler(t *testing.T) {
 			require.Equal(t, tc.respError, resp.Error)
 		})
 	}
-}
-
-type mockLogger struct{}
-
-func (m mockLogger) Enabled(context.Context, slog.Level) bool {
-	return false
-}
-
-func (m mockLogger) Handle(context.Context, slog.Record) error {
-	return nil
-}
-
-func (m mockLogger) WithAttrs([]slog.Attr) slog.Handler {
-	return m
-}
-
-func (m mockLogger) WithGroup(string) slog.Handler {
-	return m
 }

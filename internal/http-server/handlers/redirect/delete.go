@@ -2,6 +2,7 @@ package redirect
 
 import (
 	"errors"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
@@ -16,13 +17,14 @@ type URLDeleter interface {
 	DeleteURL(alias string) error
 }
 
-func DeleteHandler(log *slog.Logger, urlGetter URLDeleter) http.HandlerFunc {
+func DeleteHandler(log *slog.Logger, urlDeleter URLDeleter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log = log.With(
 			"request_id", middleware.GetReqID(r.Context()),
 		)
 		alias := chi.URLParam(r, "alias")
-		err := urlGetter.DeleteURL(alias)
+		fmt.Println("requested", r.RequestURI)
+		err := urlDeleter.DeleteURL(alias)
 		if errors.Is(err, storage.ErrUrlNotFound) {
 			log.Error("url not found", "alias", alias, "err", err)
 			render.JSON(w, r, resp.Error("url not found"))

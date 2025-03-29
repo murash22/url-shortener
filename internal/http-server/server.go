@@ -26,7 +26,7 @@ func New(logger *slog.Logger, repo URLRepo) *server {
 		router: chi.NewRouter(),
 	}
 	srv.initRoutes(logger, repo)
-	return &server{}
+	return srv
 }
 
 func (s *server) initRoutes(logger *slog.Logger, repo URLRepo) {
