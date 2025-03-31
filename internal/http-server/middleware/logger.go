@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func New(log *slog.Logger) func(next http.Handler) http.Handler {
+func NewLoggerMW(log *slog.Logger) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		log := log.With(
 			slog.String("component", "middleware/logger"),

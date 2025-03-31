@@ -31,9 +31,9 @@ func main() {
 
 	s := make(chan os.Signal, 1)
 	signal.Notify(s, syscall.SIGINT, syscall.SIGTERM)
-	srv := http_server.New(log, storage)
+	srv := http_server.New(log, cfg, storage)
 	go func() {
-		if err = srv.Run(cfg); err != nil {
+		if err = srv.Run(); err != nil {
 			log.Error("failed to start server", "err", err)
 			os.Exit(1)
 		}

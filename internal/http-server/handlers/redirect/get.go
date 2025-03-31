@@ -25,11 +25,13 @@ func GetHandler(log *slog.Logger, urlGetter URLGetter) http.HandlerFunc {
 		url, err := urlGetter.GetURL(alias)
 		if errors.Is(err, storage.ErrUrlNotFound) {
 			log.Error("url not found", "alias", alias, "err", err)
+			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, resp.Error("url not found"))
 			return
 		}
 		if err != nil {
 			log.Error("failed to get url", "alias", alias, "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, resp.Error("internal server error"))
 			return
 		}

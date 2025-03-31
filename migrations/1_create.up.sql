@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS url (
+    id INTEGER PRIMARY KEY,
+    alias TEXT NOT NULL UNIQUE,
+    url TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_alias ON url(alias);
+
+
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    password BLOB NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_email ON users(email);

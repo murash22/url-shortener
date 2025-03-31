@@ -10,6 +10,7 @@ import (
 type Config struct {
 	Env         string `yaml:"env" env-default:"local"`
 	StoragePath string `yaml:"storage_path" env-required:"true"`
+	JwtSecret   string `yaml:"jwt_secret" env-required:"true"`
 	HTTPServer  `yaml:"http_server" env-required:"true"`
 }
 

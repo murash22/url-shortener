@@ -8,13 +8,15 @@ import (
 	"log/slog"
 	"net/http"
 	resp "url-shortener/internal/lib/api/response"
+	custom_validators "url-shortener/internal/lib/custom-validators"
 	"url-shortener/internal/lib/random"
+	"url-shortener/internal/models"
 	"url-shortener/internal/storage"
 )
 
 type Request struct {
 	URL   string `json:"url" validate:"required,url"`
-	Alias string `json:"alias,omitempty"`
+	Alias string `json:"alias,omitempty" validate:"isValidAlias"`
 }
 
 type Response struct {
@@ -24,7 +26,7 @@ type Response struct {
 
 //go:generate go run github.com/vektra/mockery/v2@v2.53.3 --name=URLSaver
 type URLSaver interface {
-	SaveURL(urlToSave string, alias string) (int64, error)
+	SaveURL(models.UrlShortener) (int64, error)
 }
 
 func New(log *slog.Logger, urlSaver URLSaver) http.HandlerFunc {
@@ -36,47 +38,74 @@ func New(log *slog.Logger, urlSaver URLSaver) http.HandlerFunc {
 
 		if err := render.DecodeJSON(r.Body, &req); err != nil {
 			log.Error("failed to decode request body", "err", err)
+			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, resp.Error("failed to decode request body"))
 			return
 		}
 		log.Debug("request body decoded", "body", req)
-		if err := validator.New().Struct(req); err != nil {
-			log.Error("failed to validate request", "err", err)
-			render.JSON(w, r, resp.Error("failed to validate request"))
+
+		if err := validateRequest(r, log); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			render.JSON(w, r, resp.Error(err.Error()))
 			return
 		}
 
-		id, alias, err := trySaveAlias(req, urlSaver)
+		urlShortener, err := trySaveAlias(req, urlSaver)
 		if errors.Is(err, storage.ErrUrlExists) {
 			log.Info("url already exists", "url", req.URL)
+			w.WriteHeader(http.StatusConflict)
 			render.JSON(w, r, resp.Error("url already exists"))
 			return
 		}
 		if err != nil {
 			log.Error("failed to save url", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, resp.Error("failed to save url"))
 			return
 		}
-		log.Info("url saved", "id", id)
+		log.Info("url saved", "id", urlShortener.Id)
 		render.JSON(w, r, Response{
 			Response: resp.OK(),
-			Alias:    alias,
+			Alias:    urlShortener.Alias,
 		})
 	}
 }
 
-func trySaveAlias(req Request, saver URLSaver) (int64, string, error) {
+func trySaveAlias(req Request, saver URLSaver) (models.UrlShortener, error) {
 	aliasProvided := true
+	var urlShortener models.UrlShortener
 	for {
 		if req.Alias == "" {
 			aliasProvided = false
 			req.Alias = random.NewRandomString(resp.AliasFixedLength)
 		}
-		id, err := saver.SaveURL(req.URL, req.Alias)
+		urlShortener = models.UrlShortener{
+			Url:   req.URL,
+			Alias: req.Alias,
+		}
+		id, err := saver.SaveURL(urlShortener)
 		if errors.Is(err, storage.ErrUrlExists) && !aliasProvided {
 			req.Alias = ""
 			continue
 		}
-		return id, req.Alias, err
+		urlShortener.Id = id
+		return urlShortener, err
 	}
+}
+
+func validateRequest(req *http.Request, log *slog.Logger) error {
+	validate := validator.New()
+	err := validate.RegisterValidation("isValidAlias", custom_validators.AliasValidation)
+	if err != nil {
+		log.Error("failed to register validation", "err", err)
+		return errors.New("internal server error")
+	}
+	if err = validate.Struct(req); err != nil {
+		var validateErr validator.ValidationErrors
+		errors.As(err, &validateErr)
+		err = custom_validators.ValidationError(validateErr)
+		log.Error("failed to validate request", "err", err.Error())
+		return err
+	}
+	return nil
 }
